@@ -1,0 +1,756 @@
+---
+title: "FinalProject"
+author: "Ming Xie"
+date: "2022-11-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+library(reticulate)
+library(tidyverse)
+library(hexbin)
+library(corrplot)
+library(GGally)
+```
+# Dataset Description **by Wen**
+
+The dataset we will be using is the SkillCraft1 Master Table Dataset Data Set from the University of California, Irvine Machine Learning Repository dated on September 20th, 2013.
+
+Data is available at https://archive.ics.uci.edu/ml/datasets/SkillCraft1+Master+Table+Dataset
+
+The dataset consists of the following attributes:
+
+Variable              | Description
+----------------------| -------------------------------------------------------------------------------------------------------------------
+GameID                | Unique ID number for each game (integer)
+LeagueIndex           | Bronze, Silver, Gold, Platinum, Diamond, Master, GrandMaster, and Professional leagues coded 1-8 (Ordinal)
+Age                   | Age of each player (integer)
+HoursPerWeek          | Reported hours spent playing per week (integer)
+TotalHours            | Reported total hours spent playing (integer)
+APM                   | Action per minute (continuous)
+SelectByHotkeys       | Number of unit or building selections made using hotkeys per timestamp (continuous)
+AssignToHotkeys       | Number of units or buildings assigned to hotkeys per timestamp (continuous)
+UniqueHotkeys         | Number of unique hotkeys used per timestamp (continuous)
+MinimapAttacks        | Number of attack actions on minimap per timestamp (continuous)
+MinimapRightClicks    | number of right-clicks on minimap per timestamp (continuous)
+NumberOfPACs          | Number of PACs per timestamp (continuous)
+GapBetweenPACs        | Mean duration in milliseconds between PACs (continuous)
+ActionLatency         | Mean latency from the onset of a PACs to their first action in milliseconds (continuous)
+ActionsInPAC          | Mean number of actions within each PAC (continuous)
+TotalMapExplored      | The number of 24x24 game coordinate grids viewed by the player per timestamp (continuous)
+WorkersMade           | Number of SCVs, drones, and probes trained per timestamp (continuous)
+UniqueUnitsMade       | Unique unites made per timestamp (continuous)
+ComplexUnitsMade      | Number of ghosts, infestors, and high templars trained per timestamp (continuous)
+ComplexAbilitiesUsed  | Abilities requiring specific targeting instructions used per timestamp (continuous)
+
+The output variable is the *LeagueIndex* variable, which takes values from 1 to 8, corresponding to each of the leagues.
+
+
+
+```{r}
+#Data Preparation by Ming
+skillCraft<-read.csv("SkillCraft1_Dataset.csv")
+# Check the structure of the data
+str(skillCraft)
+
+# review the data
+head(skillCraft)
+summary(skillCraft)
+
+
+#Data Cleaning **by xy***
+
+skillCraft=read.csv ("SkillCraft1_Dataset.csv",na.strings = "?")
+str(skillCraft)
+```
+### DealWith missing value
+```{r}
+sum(is.na(skillCraft))
+```
+>There are 168 missing value in this dataset,we should dealth with it.
+
+```{r}
+
+#Finding and Fixing Missing Values **by Ming**
+colSums(is.na(skillCraft))
+
+#Imputation by median for attributes who have missing value.
+
+skillCraft$Age[is.na(skillCraft$Age)] <- median(skillCraft$Age,na.rm=TRUE)
+skillCraft$HoursPerWeek[is.na(skillCraft$HoursPerWeek)] <- median(skillCraft$HoursPerWeek,na.rm=TRUE)
+skillCraft$TotalHours[is.na(skillCraft$TotalHours)] <- median(skillCraft$TotalHours,na.rm=TRUE)
+
+colSums(is.na(skillCraft))
+
+#Finding duplicate values by Ming
+sum(duplicated(skillCraft))
+
+```
+
+
+###DealWith redundant data **by xy**
+```{r}
+skillCraftcleaned=subset(skillCraft,select =-c(GameID))
+str(skillCraftcleaned)
+
+```
+>The GameID is unique, and it is not helpful for our research,so we remove this row.
+
+### Data Exploration
+
+```{r}
+
+# ***By Ming***
+
+# check response Candidate: LeagueIndex and APM
+
+# histogram of LeagueIndex
+hist(skillCraftcleaned$LeagueIndex, xlab = 'LeagueIndex',main='Histogram of LeagueIndex', col="#56B4E9")
+
+# check histogram of APM
+
+hist(skillCraftcleaned$APM, xlab = 'APM: Action per minute',main='Histogram of APM')
+
+#Finding Outliers
+boxplot(skillCraftcleaned$LeagueIndex,col="#E69F00",main='LeagueIndex Boxplot before treatment', ylab = "LeagueIndex")
+boxplot(skillCraftcleaned$APM,col="#E69F00",main='APM Boxplot before treatment', ylab = "Action per minute")
+
+# We can see the APM value over 250 are outliers.But we don't want to remove those outliers due to the high talent game players can have very high APM,they are superStar.
+
+# check the potential factor Age. 
+
+summary(skillCraftcleaned$Age)
+
+# check histogram of factor Age
+
+hist(skillCraftcleaned$Age, xlab = 'Age',main='Histogram of Age')
+
+
+#Finding Outliers of Age
+
+boxplot(skillCraftcleaned$Age,col="#E69F00",main='Age Boxplot before treatment', ylab = "Age")
+
+# We can see the age over 30 are outliers.But We decide to keep those outliers  due to age is a natural attribute for game players , so we don't consider those outliers as abnormal value.
+
+
+# We divide the game players into two groups by Age, one name as young group with age over 21(median), another name as old group  with age below 21.Then we add new column "AgeGroup"
+
+young <- skillCraftcleaned[skillCraftcleaned$Age <= 21,]
+old <- skillCraftcleaned[skillCraftcleaned$Age>21,] 
+yongSet <- data.frame(young,AgeGroup="young")
+oldSet <- data.frame(old,AgeGroup="old")
+skillCraftTreatedData<- merge(yongSet,oldSet,all=TRUE)
+
+head(skillCraftTreatedData)
+summary(skillCraftTreatedData)
+
+# check the Association between AgeGroup (young/old) and APM by utilizing boxplot.
+
+ggplot(data =skillCraftTreatedData , mapping = aes(x =AgeGroup , y = APM)) +
+  geom_boxplot(fill=c("#E69F00", "#56B4E9"))
+
+# Base on the boxplot,it shows in general young group have higher APM than old group. But it mainly depends on how we choose the boundary for age grouping.
+
+# check the count and proportion of two age group's APM by utilizing overlay histogram
+
+ggplot(data = skillCraftTreatedData, aes(x =APM)) +
+  geom_histogram(aes(fill = AgeGroup), bins = 20, color = "black")
+ggplot(data = skillCraftTreatedData, aes(x = APM)) +
+  geom_histogram(aes(fill = AgeGroup), bins = 20, color = "black", position = "fill")
+
+# Base on the overlay histogram, the APM below 60,old age group take the majority and APM over 60 the young age group take the majority. When APM over 350,no old age group players reach the range.
+
+
+# Compute Heatmap Correlation to find complete and accurate Correlation
+
+Num.cols <- sapply(skillCraftTreatedData, is.numeric)
+Cor.data <- cor(skillCraftTreatedData[, Num.cols])
+corrplot(Cor.data, method = 'color') 
+ggcorr(skillCraftTreatedData, label = TRUE, label_round = 2, label_size = 2, size = 2.5 , hjust = 0.85) +
+  ggtitle("Correlation Heatmap") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+# High Correlation are  LeagueIndex & APM(0.68),LeagueIndex&NumberOfPACs(0.61),LeagueIndex&ActionLatency(-0.67)
+# APM&SelectByHotkeys(0.84), APM&NumberOfPACs(0.65),APM&ActionLatency(-0.72)
+
+#It shows that the LeagueIndex and APM which we interested have some High Correlation attributes.It's a good news for us due to we plan to take them as the response of Linear Regression Model.
+
+
+# We divide the game player into two groups by APM, one name as low AMP group with APM over 100, another name as high APM group with age below 30.Then we add new column "APMGroup"
+
+
+lowAPM <- skillCraftTreatedData[skillCraftTreatedData$APM <= 100,]
+highAPM <- skillCraftTreatedData[skillCraftTreatedData$APM>100,] 
+lowSet <- data.frame(lowAPM,APMGroup="low APM")
+highSet <- data.frame(highAPM,APMGroup="high APM")
+skillCraftAPMTreatedData<- merge(lowSet,highSet,all=TRUE)
+
+head(skillCraftAPMTreatedData)
+summary(skillCraftAPMTreatedData)
+
+
+
+# we investigate Relationship between ActionLatency and APMGroup **by Ming**
+
+ggplot(data =skillCraftAPMTreatedData , mapping = aes(x =APMGroup , y =ActionLatency)) +
+  geom_boxplot(fill=c("#E69F00", "#56B4E9"))
+
+# The two the boxplot show that the high APM group have much lower ActionLatency than low APM Group. And there are so many outliers from both boxplot. 
+
+# We decide to remove those outliers in ActionLatency due to it's possible that the abnomal value caused by serious network issue.We want the data information from normal network device environment.
+
+#Treating Outliers
+ActionLatency_outliers <- boxplot.stats(skillCraftAPMTreatedData$ActionLatency)$out
+treatedLatencyData <- subset(skillCraftAPMTreatedData,!ActionLatency %in% ActionLatency_outliers)
+summary(treatedLatencyData)
+
+#Checking outliers after treatement
+ggplot(data =treatedLatencyData , mapping = aes(x =APMGroup , y =ActionLatency)) +
+  geom_boxplot(fill=c("#E69F00", "#56B4E9"))
+# We can see the high APM group boxplot still have outliers,but if those outliers are in low APM group,the value are normal ,so we don't need to treat them.
+
+
+
+#  utilizing overlay histogram to investigate ActionLatency and APMGroup **by Ming**
+
+ggplot(data = treatedLatencyData, aes(x =ActionLatency)) +
+  geom_histogram(aes(fill = APMGroup), bins = 30, color = "black")
+ggplot(data = treatedLatencyData, aes(x =ActionLatency)) +
+  geom_histogram(aes(fill = APMGroup), bins = 30, color = "black", position = "fill")
+
+# The overlay histogram shows that high APM group takes the majority of the range which below 65 milliseconds ,and the low APM group takes the majority of the range which over 65 milliseconds.
+
+# scatterplot of APM and ActionLatency **by Ming**
+
+ggplot(data = treatedLatencyData) +
+  geom_point(mapping = aes(x = ActionLatency, y = APM), col= "mediumslateblue") + ggtitle("APM and ActionLatency")
+
+# It shows APM and ActionLatency has certain negative linear relationship.
+
+# scatterplot of APM and SelectByHotkeys **by Ming**
+
+ggplot(data = treatedLatencyData) +
+  geom_point(mapping = aes(x = SelectByHotkeys, y = APM), col= "mediumslateblue") + ggtitle("APM and SelectByHotkeys")
+
+# It shows APM and SelectByHotkeys has certain positive linear relationship.
+
+
+# use ANOVA test to check the association between one numerical variable and one categorical variable **by Ming**
+
+aov1 <- aov(ActionLatency ~ APMGroup, data = treatedLatencyData)
+summary(aov1)
+
+aov2 <- aov(SelectByHotkeys ~ APMGroup, data = treatedLatencyData)
+summary(aov2)
+
+aov3 <- aov(SelectByHotkeys ~ AgeGroup, data = treatedLatencyData)
+summary(aov3)
+
+aov4 <- aov(ActionLatency ~ AgeGroup, data = treatedLatencyData)
+summary(aov4)
+
+# The p-value of the all the categorical features is very low (p < 0.001), so it appears that APM low/high and Age young/old has a real impact on the ActionLatency and SelectByHotkeys.
+```
+
+```{r}
+library(readr)
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(stringr)
+library(ggpubr)
+
+# **by xy**
+
+skillCraftcleaned$LeagueIndex = as.character(skillCraftcleaned$LeagueIndex)
+skillCraftcleaned[skillCraftcleaned$LeagueIndex == 1 , "LeagueIndex"] = 'Bronze'
+skillCraftcleaned[skillCraftcleaned$LeagueIndex == 2 , "LeagueIndex"] = 'Silver'
+skillCraftcleaned[skillCraftcleaned$LeagueIndex == 3 , "LeagueIndex"] = 'Gold'
+skillCraftcleaned[skillCraftcleaned$LeagueIndex == 4 , "LeagueIndex"] = 'Platinum'
+skillCraftcleaned[skillCraftcleaned$LeagueIndex == 5 , "LeagueIndex"] = 'Diamond'
+skillCraftcleaned[skillCraftcleaned$LeagueIndex == 6 , "LeagueIndex"] = 'Master'
+skillCraftcleaned[skillCraftcleaned$LeagueIndex == 7 , "LeagueIndex"] = 'GrandMaster'
+skillCraftcleaned[skillCraftcleaned$LeagueIndex == 8 , "LeagueIndex"] = 'Professional'
+
+skillCraftcleaned$LeagueIndex <- factor(skillCraftcleaned$LeagueIndex, levels = c("Bronze","Silver", 
+"Gold","Platinum","Diamond","Master","GrandMaster","Professional"))
+
+ggplot(skillCraftcleaned,aes(x=LeagueIndex))+
+geom_bar(stat="count",
+fill=c("1"="#8c510a","2"="#d8b365","3"="#f6e8c3","4"="#c7eae5","5"="#5ab4ac","6"="#01665e","7"="#af8dc3","8"="black"))
+
+```
+
+>Based on the histogram above, we find that the most people are in the platinum and diamond segments.
+
+```{r}
+
+par(mfrow=c(2,2))
+h1<-ggplot(data = skillCraftcleaned, aes(x = NumberOfPACs)) +
+  geom_histogram(aes(fill = LeagueIndex),bins = 30,color = "black",position = "fill")+ylim(0,1)
+b1<-ggplot(data = skillCraftcleaned, aes(x = LeagueIndex, y = NumberOfPACs)) +
+  geom_boxplot(aes(color = LeagueIndex))
+ggarrange(h1, b1, ncol = 1, nrow = 2) 
+
+```
+
+```{r}
+r1=subset(skillCraftcleaned,LeagueIndex=="Bronze"&NumberOfPACs>0.001&NumberOfPACs<0.003)
+r2=subset(skillCraftcleaned,LeagueIndex=="Silver"&NumberOfPACs>0.002&NumberOfPACs<0.004)
+r3=subset(skillCraftcleaned,LeagueIndex=="Gold"&NumberOfPACs>0.002&NumberOfPACs<0.004)
+r4=subset(skillCraftcleaned,LeagueIndex=="Platinum"&NumberOfPACs>0.002&NumberOfPACs<0.004)
+r5=subset(skillCraftcleaned,LeagueIndex=="Diamond"&NumberOfPACs>0.003&NumberOfPACs<0.005)
+r6=subset(skillCraftcleaned,LeagueIndex=="Master"&NumberOfPACs>0.003&NumberOfPACs<0.005)
+r7=subset(skillCraftcleaned,LeagueIndex=="GrandMaster"&NumberOfPACs>0.004&NumberOfPACs<0.006)
+skillCraftWithoutOutliers = rbind(r1,r2,r3,r4,r5,r6,r7)
+str(skillCraftWithoutOutliers)
+
+par(mfrow=c(2,2))
+h2<-ggplot(data = skillCraftWithoutOutliers, aes(x = NumberOfPACs)) +
+  geom_histogram(aes(fill = LeagueIndex),bins = 30,color = "black",position = "fill")+ylim(0,1)
+b2<-ggplot(data = skillCraftWithoutOutliers, aes(x = LeagueIndex, y = NumberOfPACs)) +
+  geom_boxplot(aes(color = LeagueIndex))
+ggarrange(h2, b2, ncol = 1, nrow = 2) 
+
+```
+>Affter remove outlier.We can see in the overlay histogram that numberOfPACs between 0.001 and 0.002 are all in bronze,and if the numberofPACs greatter than 0.005,players are all grandMaster.For the boxplot,we can find that as the leagueIndex is higher and higjer,so does the median of numberOfPACs.So i think leagueIndex is related to numberOfPACs.
+
+
+**By Wen**
+
+```{r}
+ggplot(skillCraftcleaned,aes(x=LeagueIndex))+
+  geom_bar(stat="count",fill=c("1"="#8c510a","2"="#d8b365","3"="#f6e8c3","4"="#c7eae5","5"="#5ab4ac","6"="#01665e","7"="#af8dc3","8"="black"))
+```
+> We first found out how many users there are at each level, Platinum users are the most, and GrandMaster users are the least.
+
+```{r}
+# boxplot
+boxplot(as.numeric(skillCraftcleaned$HoursPerWeek)~skillCraftcleaned$LeagueIndex, main = 'HoursPerWeek by 
+        LeagueIndex',xlab = 'LeagueIndex' , ylab = 'HoursPerweek')  
+```
+
+> In order to understand the overall distribution, the boxplot of the weekly game time is drawn. Although the levels are slightly different, it is not obvious according to the different levels of the weekly game time
+
+```{r}
+boxplot(skillCraftcleaned$APM~skillCraftcleaned$LeagueIndex, main = 'APM by LeagueIndex',
+        xlab = 'LeagueIndex' , ylab = 'APM (Action Per Minute)')
+```
+
+> Judging from the number of commands input by mouse or keyboard per minute in boxplot, there are obvious differences in the number of commands of different levels, and the higher the level, the higher the APM distribution. Therefore, if you want to increase the level, increasing the instructions per minute is effective.
+
+```{r}
+boxplot(skillCraftcleaned$MinimapAttacks~skillCraftcleaned$LeagueIndex, main = 'MinimapAttacks by LeagueIndex',
+        xlab = 'LeagueIndex' , ylab = 'MinimapAttacks')
+```
+
+> Judging from the number of attacks on the mini map, there is a slight difference up to the Diamond level, but there is a significant difference from the Master level. The number of attacks on the mini map can be regarded as an element that divides the levels above and below the Grandmaster level.
+
+```{r}
+boxplot(skillCraftcleaned$WorkersMade~skillCraftcleaned$LeagueIndex, main = 'WorkersMade by LeagueIndex',
+        xlab = 'LeagueIndex' , ylab = 'WorkersMade')
+```
+
+> Looking at the average number of workers over a time frame, the average number of workers increases as the rank increases. But between the high grades, no significant difference is seen in the average number of staff.
+
+```{r}
+boxplot(skillCraftcleaned$ActionLatency~skillCraftcleaned$LeagueIndex, main = 'ActionLatency by LeagueIndex',
+        xlab = 'LeagueIndex' , ylab = 'ActionLatency')
+```
+
+> Looking at the average time it takes to complete a command from clicking on a specific unit, the time decreases significantly as the level increases. The lower the level, the longer the time-consuming and the wider the time distribution, the higher the level, the shorter the time-consuming and the narrower the time distribution. Starting and completing orders quickly seems to be important if you want to level up.
+
+```{r}
+boxplot(skillCraftcleaned$ActionsInPAC~skillCraftcleaned$LeagueIndex, main = 'ActionsInPAC by LeagueIndex',
+        xlab = 'LeagueIndex' , ylab = 'ActionsInPAC')
+```
+
+> In terms of the number of tasks that occur by clicking on a specific cell and completing the commanded action, there is not much difference between the different levels. A high number of jobs does not guarantee a high grade.
+
+```{r}
+par(mfrow =c(1,1))
+hotkey.table <-xtabs( ~ skillCraftcleaned$LeagueIndex + skillCraftcleaned$UniqueHotkeys, data = skillCraftcleaned)
+barplot(hotkey.table,xlab ='Frequency of uniqueHotkeys',ylab ='The number of user', col = c('green','red',colors()[10],colors()[20],colors()[30],colors()[300],colors()[2],colors()[60])
+        , legend.text = TRUE , args.legend =list(cex= 0.85,text.width=0.35, bty ='n',yjust=0.8), main = 'UniqueHotkeys' )
+```
+
+> Judging from the frequency analysis of the number of times UniqueHotkey is used, the more times UniqueHotkey is used, the fewer low-level users and the more high-level users. Frequent use of the Unique hotkey can be a way to get into high levels.
+
+```{r}
+if(!require(ggplot2)){install.packages("ggplot2"); library(ggplot2)}
+
+scatterplot = ggplot(data = skillCraftcleaned ,
+                     aes(x = skillCraftcleaned$APM, y = skillCraftcleaned$ActionLatency,  col = skillCraftcleaned$LeagueIndex)) + geom_point() +  xlab('APM') +  ylab("ActionLatency") + 
+  ggtitle('scatteplot of APM & ActionLatency')
+scatterplot
+```
+
+> To see how APM and ActionLatency are distributed across the ranks, we plotted scatterplots, showing clear patterns between them. The higher the APM, the lower the ActionLatency, and the higher the distribution level; the lower the APM, the higher the ActionLatency, and the lower the distribution level.
+
+```{r}
+scatterplot = ggplot(data = skillCraftcleaned ,
+                     aes(x = skillCraftcleaned$GapBetweenPACs, y = skillCraftcleaned$SelectByHotkeys,  col = skillCraftcleaned$LeagueIndex)) + geom_point() +  xlab('GapBetweenPACs') +  ylab("SelectByHotkeys") + 
+  ggtitle('scatterplot of GapBetweenPACs & SelectByHotkeys')
+scatterplot
+```
+
+> In order to observe the relationship between different levels of SelectByHotkeys and GapBetweenPACs, a scatter plot was drawn, the higher the average number of hotkey usage, the shorter the time spent between commands to complete actions, the higher the level distribution, the less hotkey usage, and the command completion The longer the time spent between actions, the lower the rank distribution.
+
+
+> To get a handle on the nature of the overall data, bar charts, boxplot, histograms, and scatter plots were used. The results showed that in order to improve the game level, attacks through APM, mini-maps, UniqueHotkey usage, and importantly, practice increasing the number of times you look at the map.
+
+
+
+Data Analysis
+Hypothesis Testing
+
+**BY Ming**
+> Hypothesis Testing: Null Hypothesis is:The mean of ActionLatency from low and high APM group have no difference.
+Alternate Hypothesis is:The mean of ActionLatency from  low and high APM group have difference.
+The hypotheis test is:
+H0:μlowAPM=μhighAPM,H1:μlowAPM≠μhighAPM.
+We assume the two population follow normal distribution but both population variance are unknown.So we firstly use f-test to check if the variance from two population are equal or not.
+
+```{r}
+# assume the α=0.05.
+str(treatedLatencyData)
+lowAPMActionLatency<-treatedLatencyData[treatedLatencyData$APMGroup=="low APM",]$ActionLatency
+highAPMActionLatency<-treatedLatencyData[treatedLatencyData$APMGroup=="high APM",]$ActionLatency
+
+```
+>Check if their variance are equal or not. The hypotheis test for variance is:
+H0:σ2lowAPM/σ2highAPM=1,H1:σ2lowAPM/σ2highAPM≠1.
+We use f-test to check the result.
+
+```{r}
+var.test(lowAPMActionLatency,highAPMActionLatency,alternative = c("two.sided"),conf.level = 0.95)
+
+```
+>Base on the result of f-test, the p-value < α, so we should reject H0.And the 95 percent confidence interval is between 1.287094 and 1.565752. So 1 is not within it,it also support the variance of two populaton are not equal. 
+Then we check the mean difference by utilizing t-test
+
+```{r}
+t.test(lowAPMActionLatency,highAPMActionLatency,alternative = "two.sided",var.equal = FALSE, conf.level = .95)
+
+```
+>Base on the result of t-test, the p-value  < α, so we should reject H0.And the 95 percent confidence interval is between 21.57640 and 23.30364.So 0 is not within it,it also support the mean of two populaton are not equal. 
+We als have sufficient statistical evidence to prove that low Apm Group has much higher ActionLatency than high Apm Group, they differnce between 21.57640 and 23.30364 in average in 95 percent confidence interval.
+
+
+**by xy**
+
+```{r}
+BronzePACs=r1$NumberOfPACs
+GrandMasterPACs=r7$NumberOfPACs
+var.test(BronzePACs,GrandMasterPACs,alternative = "two.sided",conf.level = 0.95)
+```
+>Hypothesis h0:varianceBronzePACs = varianceGrandMasterPACs h1: varianceBronzePACs!=varianceGrandMasterPACs
+The F-test's p-value is 0.7914>0.05,so base on alpha =0.05,we should not reject h0.
+
+```{r}
+t.test(BronzePACs,GrandMasterPACs,var.equal = TRUE,alternative = "two.sided",conf.level = 0.95)
+
+```
+>Hypothesis h0:meanBronzePAC = meanGrandMasterPACs h1: meanBronzePAC!=meanGrandMasterPACs
+The t-test's p-value is 2.2e-16<0.05,so base on alpha =0.05,we should reject h0.
+
+
+
+
+>Multiple Linear Regression and Subsect Selection
+
+>Subset Selection for training and test sample
+
+```{r}
+library(MASS)
+library(MLmetrics)
+
+# test and training sample **BY Ming**
+
+sample<- subset(treatedLatencyData[,-c(20:21)]) # remove the added category attributes
+#sample<-subset(tempsample[,-c(1:1)]) # remove GameID
+str(sample)
+i <- sample(2, nrow(sample), replace=TRUE, prob=c(0.8, 0.2))
+Training <-sample[i==1,]
+Test <- sample[i==2,]
+
+# Produce a scatter plot matrix which includes some variables in the data set.
+
+#pairs(Training[,2:14],col = "blue")
+
+
+# Compute the matrix of correlations between the variables **BY Ming**
+
+# |r|<0.3, weak correlation 0.3<|r|<0.7, moderate correlation  |r|>0.7, high correlation
+
+correlation <-cor(sample)
+correlation
+
+```
+> We firstly try to choose LeagueIndex as response **BY Ming**
+
+```{r}
+
+# Create a null model
+
+#re-check training and test sample
+str(Training)
+colSums(is.na(Training))
+str(Test)
+colSums(is.na(Test))
+
+intercept_only <- lm(LeagueIndex ~ 1, data=Training)
+# Create a full model
+full <- lm(LeagueIndex~., data=Training)
+
+# perform forward step-wise regression
+forward<-stepAIC (intercept_only, direction='forward',scope = formula(full))
+forward$anova
+summary(forward)
+#base on the result,final model is LeagueIndex ~ APM + AssignToHotkeys + SelectByHotkeys + HoursPerWeek + Age+TotalHours
+
+
+#Get MAE and MSE
+
+ypred_forward <-predict(object =forward , newdata = Test)
+MAE(y_pred = ypred_forward, y_true = Test$LeagueIndex)
+MSE(y_pred = ypred_forward, y_true = Test$LeagueIndex)
+
+
+# perform backward step-wise regression
+
+backward<-stepAIC (full, direction='backward')
+backward$anova
+summary(backward)
+
+#Get MAE and MSE
+ypred_backward <-predict(object =backward , newdata = Test)
+MAE(y_pred = ypred_backward, y_true = Test$LeagueIndex)
+MSE(y_pred = ypred_backward, y_true = Test$LeagueIndex)
+
+
+
+# perform both step-wise regression
+both <- stepAIC (intercept_only, direction='both',scope = formula(full),trace = 0)
+
+# view results of both stepwise regression
+both$anova
+summary(both)
+# base on the result ,we can see the multiple variables should including 
+
+#Get MAE and MSE
+ypred_both <-predict(object =both , newdata = Test)
+MAE(y_pred = ypred_both, y_true = Test$LeagueIndex)
+MSE(y_pred = ypred_both, y_true = Test$LeagueIndex)
+```
+>The most significant factors are ActionLatency,AssignToHotkeys,MinimapAttacks,GapBetweenPACs,SelectByHotkeys,WorkersMade,NumberOfPACs and HoursPerWeek due to their p-value  are close to zero.Then We know those are the main factors to determine if players can play well or not.The age,APM and ComplexUnitsMade are not the significant factors due to their p-value are not small which unexpected by many people.So If you want to be a good skillCraft player,you have to find the right way to improve according to this analytical model.
+
+> Base on the model we get,we can see the value for  Multiple R-squared, Adjusted R-squared,p-value, Residual standard error,MAE,MSE. But We can't judage if this model is the best or not.So we need compare with another model we select.
+
+
+```{r}
+
+# build one model 
+
+manualModel<-lm(formula = LeagueIndex ~ Age+HoursPerWeek + TotalHours + APM + SelectByHotkeys + AssignToHotkeys, data = Training)
+
+summary(manualModel)
+
+#Get MAE and MSE
+ypred_manual <-predict(object =manualModel,newdata = Test)
+MAE(y_pred = ypred_manual, y_true = Test$LeagueIndex)
+MSE(y_pred = ypred_manual, y_true = Test$LeagueIndex)
+
+```
+>Compare the two model by R-squared,Residual standard error,MAE,MSE.To determine best factor,the model need the  following criterias:
+1.The model has the highest value of R-Squared and Adjusted R-Squared which can close to 1.
+2.The model has the lowest value of RSE,MAE,MSE
+So finally we choose the model from Subset Selection: LeagueIndex ~ ActionLatency + AssignToHotkeys +MinimapAttacks + GapBetweenPACs + WorkersMade + SelectByHotkeys +UniqueHotkeys + HoursPerWeek + NumberOfPACs + TotalMapExplored +Age
+
+```{r}
+
+IndexModel<-lm(formula = LeagueIndex ~ ActionLatency + AssignToHotkeys +MinimapAttacks + GapBetweenPACs + WorkersMade + SelectByHotkeys +UniqueHotkeys + HoursPerWeek + NumberOfPACs + TotalMapExplored +Age , data = Training)
+
+par(mfrow=c(2,2))
+plot(IndexModel)
+
+```
+
+> By assessing model fit,the previous Model which takes LeagueIndex as reponse seems don't fit very well.Multiple R-squared and Adjusted R-squared are not very close to 1.We know R2 measures the proportion of variability in Y that can be explained using X.In general,it's better to close to 1.
+
+> How about take APM as response? The previous Linear Model's response is LeagueIndex,it is better to consider as Categorical attribute.
+
+```{r}
+
+# choose APM as response **BY Ming**
+
+intercept_onlyAPM <- lm(APM ~ 1, data=Training)
+# Create a full model
+fullAPM <- lm(APM~., data=Training)
+
+# perform forward step-wise regression
+forwardAPM<-stepAIC (intercept_onlyAPM, direction='forward',scope = formula(fullAPM))
+forwardAPM$anova
+summary(forwardAPM)
+
+#Get MAE,MSE
+ypred_forwardAPM <-predict(object =forwardAPM , newdata = Test)
+MAE(y_pred = ypred_forwardAPM, y_true = Test$APM)
+MSE(y_pred = ypred_forwardAPM, y_true = Test$APM)
+
+
+# perform backward step-wise regression
+
+backwardAPM<-stepAIC (fullAPM, direction='backward')
+backwardAPM$anova
+summary(backwardAPM)
+
+#Get MAE and MSE
+ypred_backwardAPM <-predict(object =backwardAPM , newdata = Test)
+MAE(y_pred = ypred_backwardAPM, y_true = Test$APM)
+MSE(y_pred = ypred_backwardAPM, y_true = Test$APM)
+
+
+
+# perform both step-wise regression
+bothAPM <- stepAIC (intercept_onlyAPM, direction='both',scope = formula(fullAPM),trace = 0)
+
+# view results of both stepwise regression
+bothAPM$anova
+summary(bothAPM)
+
+
+# The most significant factors are SelectByHotkeys,MinimapRightClicks,NumberOfPACs,ActionLatency,ActionsInPAC,WorkersMade,ComplexAbilitiesUsed due to their p-value are close to zero.It shows that if game player want to improve APM they should have strong the game operative skills with mouse and keyboard and reduce the gap and Latency.
+
+
+#Get MAE and MSE
+ypred_bothAPM <-predict(object =bothAPM , newdata = Test)
+MAE(y_pred = ypred_bothAPM, y_true = Test$APM)
+MSE(y_pred = ypred_bothAPM, y_true = Test$APM)
+
+rmse <- function(actual, predicted) {
+sqrt(mean((actual - predicted)^2))
+}
+
+RMSE <- rmse(Test$APM, ypred_bothAPM)
+RMSE
+
+
+APMModel<-lm(formula = APM ~ SelectByHotkeys + ActionLatency + ActionsInPAC + NumberOfPACs + WorkersMade + MinimapRightClicks + ComplexAbilitiesUsed + MinimapAttacks + UniqueUnitsMade + Age + UniqueHotkeys + LeagueIndex  , data = Training)
+plot(APMModel)
+
+# Comparing the two model with different response by Multiple R-squared and Adjusted R-squared to assess model fit.The APM model's Multiple R-squared and Adjusted R-squared are much more close to 1 than LeagueIndex Model's . 
+# So the APM model is a better model.
+
+```
+
+**By xy**
+
+```{R}
+
+i <- sample(2, nrow(skillCraftWithoutOutliers), replace=TRUE, prob=c(0.8, 0.2))
+
+#split the data set into two parts skillCraftTraining and skillCraftTest
+skillCraftTraining <- skillCraftWithoutOutliers[i==1,]
+skillCraftTest <- skillCraftWithoutOutliers[i==2,]
+all<-lm(NumberOfPACs~., data=skillCraftTraining[,1:19])
+backward <- stepAIC (all, direction='backward')
+```
+
+```{R}
+backward$anova
+```
+```{R}
+summary(backward)
+```
+>There are some relationships between the predictors and the responses.
+>The leagueIndexDiamond,LeagueIndexMaster,APM,SelectByHotkeys,AssignToHotkeys,MinimapAttacks,GapBetweenPACs,ActionLatency,ActionsInPAC,TotalMapExplored,UniqueUnitsMade,ComplexAbilitiesUsed have statiscally significant relationships.
+
+```{R}
+par(mfrow=c(2,2))
+plot(backward)
+```
+
+```{R}
+library(MLmetrics)
+ypred_backward <-predict(object = backward, newdata = skillCraftTest[,1:19])
+MAE(y_pred = ypred_backward, y_true = skillCraftTest$NumberOfPACs)
+```
+
+```{R}
+MSE(y_pred = ypred_backward, y_true = skillCraftTest$NumberOfPACs)
+```
+
+
+
+
+>Goodness of fit test **BY Ming**
+
+```{r}
+
+#  Independence of Age and APM.
+# assume  α=0.05
+#  H0: (null hypothesis) The Age and APM are independent.
+#  H1: (alternative hypothesis) The  Age and APM are dependent.
+
+a1 = nrow(treatedLatencyData[treatedLatencyData$AgeGroup=="old" | treatedLatencyData$APMGroup=="high APM",])
+a2 = nrow(treatedLatencyData[treatedLatencyData$AgeGroup=="young"  | treatedLatencyData$APMGroup=="high APM",])
+b1 = nrow(treatedLatencyData[treatedLatencyData$AgeGroup=="old" | treatedLatencyData$APMGroup=="low APM",])
+b2 = nrow(treatedLatencyData[treatedLatencyData$AgeGroup=="young"  | treatedLatencyData$APMGroup=="low APM",])
+
+LevelTable<-rbind(c(a1,a2),c(b1,b2))
+dimnames(LevelTable) <- list(
+  AgeGeneration = c("Old", "Young"), 
+  APMLevel = c("High APM","Low APM"))
+
+LevelTable
+
+
+# display the proportion
+prop.table(LevelTable)
+
+# chi-square test
+chisq.test(LevelTable)
+
+# prop test
+prop.test(LevelTable)
+
+# due to p value(2.2e-16) is less than 0.05, we should reject H0.We can conclude that Age and APM are two dependent variables.
+
+
+# We all hear about that if you want to be a good skillCraft player,you have to increase the APM,and the age could effect the APM value. Yes,We approve that base on this Independence test for Age and APM. But our previous assessment  on Multiple Linear Regression by Subsect Selection also shows that Age and APM are not the only significant factors to LeagueIndex.Sure,the model is not fit very well. But The players could take considetation to focus more on tactics and technology such as SelectByHotkeys, AssignToHotkeys,MinimapAttacks,WorkersMade,NumberOfPACs.Those factors can both improve your LeagueIndex and APM.
+
+
+
+
+
+
+
+
+
+
+
+
+```
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
