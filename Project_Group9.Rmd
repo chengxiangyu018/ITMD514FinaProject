@@ -98,8 +98,8 @@ sum(duplicated(skillCraft))
 
 ```
 
+### DealWith redundant data **by xy**
 
-###DealWith redundant data **by xy**
 ```{r}
 skillCraftcleaned=subset(skillCraft,select =-c(GameID))
 str(skillCraftcleaned)
@@ -326,6 +326,7 @@ b2<-ggplot(data = skillCraftWithoutOutliers, aes(x = LeagueIndex, y = NumberOfPA
 ggarrange(h2, b2, ncol = 1, nrow = 2) 
 
 ```
+
 >Affter remove outlier.We can see in the overlay histogram that numberOfPACs between 0.001 and 0.002 are all in bronze,and if the numberofPACs greatter than 0.005,players are all grandMaster.For the boxplot,we can find that as the leagueIndex is higher and higjer,so does the median of numberOfPACs.So i think leagueIndex is related to numberOfPACs.
 
 
@@ -335,6 +336,7 @@ ggarrange(h2, b2, ncol = 1, nrow = 2)
 ggplot(skillCraftcleaned,aes(x=LeagueIndex))+
   geom_bar(stat="count",fill=c("1"="#8c510a","2"="#d8b365","3"="#f6e8c3","4"="#c7eae5","5"="#5ab4ac","6"="#01665e","7"="#af8dc3","8"="black"))
 ```
+
 > We first found out how many users there are at each level, Platinum users are the most, and GrandMaster users are the least.
 
 ```{r}
@@ -343,12 +345,14 @@ boxplot(as.numeric(skillCraftcleaned$HoursPerWeek)~skillCraftcleaned$LeagueIndex
         LeagueIndex',xlab = 'LeagueIndex' , ylab = 'HoursPerweek')  
 ```
 
+
 > In order to understand the overall distribution, the boxplot of the weekly game time is drawn. Although the levels are slightly different, it is not obvious according to the different levels of the weekly game time
 
 ```{r}
 boxplot(skillCraftcleaned$APM~skillCraftcleaned$LeagueIndex, main = 'APM by LeagueIndex',
         xlab = 'LeagueIndex' , ylab = 'APM (Action Per Minute)')
 ```
+
 
 > Judging from the number of commands input by mouse or keyboard per minute in boxplot, there are obvious differences in the number of commands of different levels, and the higher the level, the higher the APM distribution. Therefore, if you want to increase the level, increasing the instructions per minute is effective.
 
@@ -357,12 +361,14 @@ boxplot(skillCraftcleaned$MinimapAttacks~skillCraftcleaned$LeagueIndex, main = '
         xlab = 'LeagueIndex' , ylab = 'MinimapAttacks')
 ```
 
+
 > Judging from the number of attacks on the mini map, there is a slight difference up to the Diamond level, but there is a significant difference from the Master level. The number of attacks on the mini map can be regarded as an element that divides the levels above and below the Grandmaster level.
 
 ```{r}
 boxplot(skillCraftcleaned$WorkersMade~skillCraftcleaned$LeagueIndex, main = 'WorkersMade by LeagueIndex',
         xlab = 'LeagueIndex' , ylab = 'WorkersMade')
 ```
+
 
 > Looking at the average number of workers over a time frame, the average number of workers increases as the rank increases. But between the high grades, no significant difference is seen in the average number of staff.
 
@@ -371,12 +377,14 @@ boxplot(skillCraftcleaned$ActionLatency~skillCraftcleaned$LeagueIndex, main = 'A
         xlab = 'LeagueIndex' , ylab = 'ActionLatency')
 ```
 
+
 > Looking at the average time it takes to complete a command from clicking on a specific unit, the time decreases significantly as the level increases. The lower the level, the longer the time-consuming and the wider the time distribution, the higher the level, the shorter the time-consuming and the narrower the time distribution. Starting and completing orders quickly seems to be important if you want to level up.
 
 ```{r}
 boxplot(skillCraftcleaned$ActionsInPAC~skillCraftcleaned$LeagueIndex, main = 'ActionsInPAC by LeagueIndex',
         xlab = 'LeagueIndex' , ylab = 'ActionsInPAC')
 ```
+
 
 > In terms of the number of tasks that occur by clicking on a specific cell and completing the commanded action, there is not much difference between the different levels. A high number of jobs does not guarantee a high grade.
 
@@ -386,6 +394,7 @@ hotkey.table <-xtabs( ~ skillCraftcleaned$LeagueIndex + skillCraftcleaned$Unique
 barplot(hotkey.table,xlab ='Frequency of uniqueHotkeys',ylab ='The number of user', col = c('green','red',colors()[10],colors()[20],colors()[30],colors()[300],colors()[2],colors()[60])
         , legend.text = TRUE , args.legend =list(cex= 0.85,text.width=0.35, bty ='n',yjust=0.8), main = 'UniqueHotkeys' )
 ```
+
 
 > Judging from the frequency analysis of the number of times UniqueHotkey is used, the more times UniqueHotkey is used, the fewer low-level users and the more high-level users. Frequent use of the Unique hotkey can be a way to get into high levels.
 
@@ -398,6 +407,7 @@ scatterplot = ggplot(data = skillCraftcleaned ,
 scatterplot
 ```
 
+
 > To see how APM and ActionLatency are distributed across the ranks, we plotted scatterplots, showing clear patterns between them. The higher the APM, the lower the ActionLatency, and the higher the distribution level; the lower the APM, the higher the ActionLatency, and the lower the distribution level.
 
 ```{r}
@@ -406,6 +416,7 @@ scatterplot = ggplot(data = skillCraftcleaned ,
   ggtitle('scatterplot of GapBetweenPACs & SelectByHotkeys')
 scatterplot
 ```
+
 
 > In order to observe the relationship between different levels of SelectByHotkeys and GapBetweenPACs, a scatter plot was drawn, the higher the average number of hotkey usage, the shorter the time spent between commands to complete actions, the higher the level distribution, the less hotkey usage, and the command completion The longer the time spent between actions, the lower the rank distribution.
 
@@ -418,6 +429,7 @@ Data Analysis
 Hypothesis Testing
 
 **BY Ming**
+
 > Hypothesis Testing: Null Hypothesis is:The mean of ActionLatency from low and high APM group have no difference.
 Alternate Hypothesis is:The mean of ActionLatency from  low and high APM group have difference.
 The hypotheis test is:
@@ -431,6 +443,7 @@ lowAPMActionLatency<-treatedLatencyData[treatedLatencyData$APMGroup=="low APM",]
 highAPMActionLatency<-treatedLatencyData[treatedLatencyData$APMGroup=="high APM",]$ActionLatency
 
 ```
+
 >Check if their variance are equal or not. The hypotheis test for variance is:
 H0:σ2lowAPM/σ2highAPM=1,H1:σ2lowAPM/σ2highAPM≠1.
 We use f-test to check the result.
@@ -439,6 +452,7 @@ We use f-test to check the result.
 var.test(lowAPMActionLatency,highAPMActionLatency,alternative = c("two.sided"),conf.level = 0.95)
 
 ```
+
 >Base on the result of f-test, the p-value < α, so we should reject H0.And the 95 percent confidence interval is between 1.287094 and 1.565752. So 1 is not within it,it also support the variance of two populaton are not equal. 
 Then we check the mean difference by utilizing t-test
 
@@ -446,6 +460,7 @@ Then we check the mean difference by utilizing t-test
 t.test(lowAPMActionLatency,highAPMActionLatency,alternative = "two.sided",var.equal = FALSE, conf.level = .95)
 
 ```
+
 >Base on the result of t-test, the p-value  < α, so we should reject H0.And the 95 percent confidence interval is between 21.57640 and 23.30364.So 0 is not within it,it also support the mean of two populaton are not equal. 
 We als have sufficient statistical evidence to prove that low Apm Group has much higher ActionLatency than high Apm Group, they differnce between 21.57640 and 23.30364 in average in 95 percent confidence interval.
 
@@ -457,6 +472,7 @@ BronzePACs=r1$NumberOfPACs
 GrandMasterPACs=r7$NumberOfPACs
 var.test(BronzePACs,GrandMasterPACs,alternative = "two.sided",conf.level = 0.95)
 ```
+
 >Hypothesis h0:varianceBronzePACs = varianceGrandMasterPACs h1: varianceBronzePACs!=varianceGrandMasterPACs
 The F-test's p-value is 0.7914>0.05,so base on alpha =0.05,we should not reject h0.
 
@@ -464,6 +480,7 @@ The F-test's p-value is 0.7914>0.05,so base on alpha =0.05,we should not reject 
 t.test(BronzePACs,GrandMasterPACs,var.equal = TRUE,alternative = "two.sided",conf.level = 0.95)
 
 ```
+
 >Hypothesis h0:meanBronzePAC = meanGrandMasterPACs h1: meanBronzePAC!=meanGrandMasterPACs
 The t-test's p-value is 2.2e-16<0.05,so base on alpha =0.05,we should reject h0.
 
@@ -500,6 +517,7 @@ correlation <-cor(sample)
 correlation
 
 ```
+
 > We firstly try to choose LeagueIndex as response **BY Ming**
 
 ```{r}
@@ -556,6 +574,7 @@ ypred_both <-predict(object =both , newdata = Test)
 MAE(y_pred = ypred_both, y_true = Test$LeagueIndex)
 MSE(y_pred = ypred_both, y_true = Test$LeagueIndex)
 ```
+
 >The most significant factors are ActionLatency,AssignToHotkeys,MinimapAttacks,GapBetweenPACs,SelectByHotkeys,WorkersMade,NumberOfPACs and HoursPerWeek due to their p-value  are close to zero.Then We know those are the main factors to determine if players can play well or not.The age,APM and ComplexUnitsMade are not the significant factors due to their p-value are not small which unexpected by many people.So If you want to be a good skillCraft player,you have to find the right way to improve according to this analytical model.
 
 > Base on the model we get,we can see the value for  Multiple R-squared, Adjusted R-squared,p-value, Residual standard error,MAE,MSE. But We can't judage if this model is the best or not.So we need compare with another model we select.
@@ -575,6 +594,7 @@ MAE(y_pred = ypred_manual, y_true = Test$LeagueIndex)
 MSE(y_pred = ypred_manual, y_true = Test$LeagueIndex)
 
 ```
+
 >Compare the two model by R-squared,Residual standard error,MAE,MSE.To determine best factor,the model need the  following criterias:
 1.The model has the highest value of R-Squared and Adjusted R-Squared which can close to 1.
 2.The model has the lowest value of RSE,MAE,MSE
@@ -588,6 +608,7 @@ par(mfrow=c(2,2))
 plot(IndexModel)
 
 ```
+
 
 > By assessing model fit,the previous Model which takes LeagueIndex as reponse seems don't fit very well.Multiple R-squared and Adjusted R-squared are not very close to 1.We know R2 measures the proportion of variability in Y that can be explained using X.In general,it's better to close to 1.
 
@@ -676,6 +697,7 @@ backward$anova
 ```{R}
 summary(backward)
 ```
+
 >There are some relationships between the predictors and the responses.
 >The leagueIndexDiamond,LeagueIndexMaster,APM,SelectByHotkeys,AssignToHotkeys,MinimapAttacks,GapBetweenPACs,ActionLatency,ActionsInPAC,TotalMapExplored,UniqueUnitsMade,ComplexAbilitiesUsed have statiscally significant relationships.
 
