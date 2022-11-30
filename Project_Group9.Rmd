@@ -315,7 +315,8 @@ r4=subset(skillCraftcleaned,LeagueIndex=="Platinum"&NumberOfPACs>0.002&NumberOfP
 r5=subset(skillCraftcleaned,LeagueIndex=="Diamond"&NumberOfPACs>0.003&NumberOfPACs<0.005)
 r6=subset(skillCraftcleaned,LeagueIndex=="Master"&NumberOfPACs>0.003&NumberOfPACs<0.005)
 r7=subset(skillCraftcleaned,LeagueIndex=="GrandMaster"&NumberOfPACs>0.004&NumberOfPACs<0.006)
-skillCraftWithoutOutliers = rbind(r1,r2,r3,r4,r5,r6,r7)
+r8=subset(skillCraftcleaned,LeagueIndex=="Professional"&NumberOfPACs>0.004&NumberOfPACs<0.006)
+skillCraftWithoutOutliers = rbind(r1,r2,r3,r4,r5,r6,r7,r8)
 str(skillCraftWithoutOutliers)
 
 par(mfrow=c(2,2))
