@@ -328,7 +328,7 @@ ggarrange(h2, b2, ncol = 1, nrow = 2)
 
 ```
 
->Affter remove outlier.We can see in the overlay histogram that numberOfPACs between 0.001 and 0.002 are all in bronze,and if the numberofPACs greatter than 0.005,players are all grandMaster.For the boxplot,we can find that as the leagueIndex is higher and higjer,so does the median of numberOfPACs.So i think leagueIndex is related to numberOfPACs.
+>After remove outlier.We can see in the overlay histogram that numberOfPACs between 0.001 and 0.002 are all in bronze,and if the numberofPACs greatter than 0.005,players are all grandMaster.For the boxplot,we can find that as the leagueIndex is higher and higjer,so does the median of numberOfPACs.So i think leagueIndex is related to numberOfPACs.
 
 
 **By Wen**
@@ -710,6 +710,9 @@ plot(backward)
 ```{R}
 library(MLmetrics)
 ypred_backward <-predict(object = backward, newdata = skillCraftTest[,1:19])
+summary(ypred_backward)
+```
+```{R}
 MAE(y_pred = ypred_backward, y_true = skillCraftTest$NumberOfPACs)
 ```
 
